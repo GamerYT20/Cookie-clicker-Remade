@@ -1,0 +1,191 @@
+<div id="cookieGameWrapper">
+  <div id="cookieGame">
+    <h1>Cookie Clicker</h1>
+    <div style="display:flex; gap: 30px;">
+      <!-- Main game area -->
+      <div>
+        <button id="cookieBtn" style="font-size:60px;">🍪</button>
+        <p>Cookies: <span id="cookieCount">0</span></p>
+        <h3>Active Upgrades:</h3>
+        <div id="activeUpgrades"></div>
+        <h3>Achievements:</h3>
+        <div id="achievements"></div>
+      </div>
+
+      <!-- Upgrades sidebar -->
+      <div style="max-height: 500px; overflow-y: auto; width: 200px;">
+        <h2>Upgrades</h2>
+        <div id="upgrades"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #cookieGameWrapper {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    width:100%;
+    min-height:100vh;
+    background-image: url('https://i.ibb.co/4gVkPPb3/Background.png');
+    background-size: cover;
+    background-position: center;
+    color:white;
+    font-family: Arial, sans-serif;
+  }
+  #cookieGame {
+    background: rgba(0,0,0,0.6);
+    padding: 20px 40px;
+    border-radius: 15px;
+    max-width: 900px;
+    width:90%;
+  }
+  button {
+    cursor: pointer;
+  }
+  .upgradeBtn {
+    margin: 5px 0;
+    padding: 5px 10px;
+    font-size: 14px;
+    width: 100%;
+    background: #444;
+    border: none;
+    border-radius: 5px;
+    color: white;
+  }
+  .upgradeBtn:disabled {
+    background: #222;
+    color: #888;
+  }
+  #activeUpgrades, #achievements {
+    background: rgba(255,255,255,0.1);
+    padding: 5px;
+    min-height: 50px;
+    border-radius: 5px;
+  }
+</style>
+
+<script>
+(function(){
+  // Load saved data
+  let cookies = Number(localStorage.getItem("cookies") || 0);
+  let upgrades = JSON.parse(localStorage.getItem("upgrades") || {});
+  let achievements = JSON.parse(localStorage.getItem("achievements") || {});
+
+  const cookieCountEl = document.getElementById("cookieCount");
+  const upgradesDiv = document.getElementById("upgrades");
+  const activeUpgradesDiv = document.getElementById("activeUpgrades");
+  const achievementsDiv = document.getElementById("achievements");
+
+  cookieCountEl.textContent = cookies;
+
+  // Create 50 upgrades
+  const upgradeList = {};
+  for(let i=1; i<=50; i++){
+    upgradeList[`upgrade${i}`] = {
+      name: `Upgrade ${i}`,
+      cost: 10*i,
+      cps: Math.ceil(i/5),
+      multiplier: i % 10 === 0 ? 2 : 1
+    };
+    if(!upgrades[`upgrade${i}`]) upgrades[`upgrade${i}`] = 0;
+  }
+
+  // Achievements
+  const achievementList = [
+    {name:"First Cookie", condition:()=>cookies>=1},
+    {name:"Cookie Collector", condition:()=>cookies>=100},
+    {name:"Centennial Cookies", condition:()=>cookies>=1000},
+    {name:"Legendary Baker", condition:()=>cookies>=10000}
+  ];
+
+  function renderUpgrades(){
+    upgradesDiv.innerHTML = '';
+    for(const key in upgradeList){
+      const u = upgradeList[key];
+      const btn = document.createElement("button");
+      btn.className = "upgradeBtn";
+      btn.textContent = `${u.name} (Cost: ${u.cost}, Owned: ${upgrades[key]})`;
+      btn.disabled = cookies < u.cost;
+      btn.addEventListener("click", ()=>buyUpgrade(key));
+      upgradesDiv.appendChild(btn);
+    }
+    renderActiveUpgrades();
+  }
+
+  function buyUpgrade(key){
+    const u = upgradeList[key];
+    if(cookies >= u.cost){
+      cookies -= u.cost;
+      upgrades[key]++;
+      u.cost = Math.floor(u.cost*1.5);
+      saveGame();
+      updateDisplay();
+    }
+  }
+
+  function renderActiveUpgrades(){
+    activeUpgradesDiv.innerHTML = '';
+    for(const key in upgrades){
+      if(upgrades[key]>0){
+        const u = upgradeList[key];
+        const p = document.createElement("p");
+        p.textContent = `${u.name} x${upgrades[key]}`;
+        activeUpgradesDiv.appendChild(p);
+      }
+    }
+  }
+
+  function checkAchievements(){
+    achievementsDiv.innerHTML = '';
+    for(const ach of achievementList){
+      if(ach.condition() && !achievements[ach.name]){
+        achievements[ach.name] = true;
+      }
+      if(achievements[ach.name]){
+        const p = document.createElement("p");
+        p.textContent = ach.name;
+        achievementsDiv.appendChild(p);
+      }
+    }
+  }
+
+  function updateDisplay(){
+    cookieCountEl.textContent = cookies;
+    renderUpgrades();
+    checkAchievements();
+  }
+
+  function saveGame(){
+    localStorage.setItem("cookies", cookies);
+    localStorage.setItem("upgrades", JSON.stringify(upgrades));
+    localStorage.setItem("achievements", JSON.stringify(achievements));
+  }
+
+  // Click cookie
+  document.getElementById("cookieBtn").addEventListener("click", ()=>{
+    let multiplier = 1;
+    for(const key in upgrades){
+      if(upgrades[key]>0 && upgradeList[key].multiplier){
+        multiplier *= Math.pow(upgradeList[key].multiplier, upgrades[key]);
+      }
+    }
+    cookies += multiplier;
+    updateDisplay();
+    saveGame();
+  });
+
+  // Auto clicker
+  setInterval(()=>{
+    for(const key in upgrades){
+      cookies += upgrades[key]*upgradeList[key].cps;
+    }
+    updateDisplay();
+    saveGame();
+  },1000);
+
+  renderUpgrades();
+  updateDisplay();
+})();
+</script>
